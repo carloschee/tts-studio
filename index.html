@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTS Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0d0d0f;
+  --surface:   #161619;
+  --surface2:  #1f1f24;
+  --surface3:  #28282f;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --text:      #e8e8ee;
+  --text-soft: rgba(232,232,238,0.45);
+  --text-dim:  rgba(232,232,238,0.25);
+  --accent:    #7c6aff;
+  --accent2:   #a594ff;
+  --green:     #00e5a0;
+  --red:       #ff5c6a;
+  --yellow:    #ffe566;
+  --orange:    #ff9f43;
+  --mono:      'Space Mono', monospace;
+  --sans:      'DM Sans', sans-serif;
+}
+
+html, body { height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; line-height:1.5; overflow:hidden; }
+
+/* ── Layout ── */
+#app { display:grid; grid-template-columns:400px 1fr; grid-template-rows:56px 1fr; height:100vh; overflow:hidden; }
+
+/* ── Topbar ── */
+#topbar { grid-column:1/-1; display:flex; align-items:center; gap:14px; padding:0 20px; background:var(--surface); border-bottom:1px solid var(--border); }
+#topbar-logo { display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--accent2); }
+#topbar-tabs { display:flex; gap:2px; margin-left:24px; }
+.tab-btn { padding:6px 16px; border-radius:8px; border:none; background:transparent; color:var(--text-soft); font-family:var(--sans); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+.tab-btn:hover { color:var(--text); background:var(--surface2); }
+.tab-btn.activo { background:var(--surface2); color:var(--text); }
+#topbar-status { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:11px; font-family:var(--mono); color:var(--text-soft); }
+#status-dot { width:6px; height:6px; border-radius:50%; background:var(--text-dim); transition:background .3s; }
+#status-dot.ok    { background:var(--green); box-shadow:0 0 6px var(--green); }
+#status-dot.error { background:var(--red); }
+#cola-badge { background:var(--orange); color:#000; font-family:var(--mono); font-size:10px; font-weight:700; padding:2px 7px; border-radius:99px; display:none; }
+#cola-badge.visible { display:inline; }
+
+/* ── Panel izquierdo ── */
+#panel-izq { background:var(--surface); border-right:1px solid var(--border); overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border2) transparent; display:flex; flex-direction:column; }
+.seccion { border-bottom:1px solid var(--border); padding:14px 18px; }
+.seccion-titulo { font-size:10px; font-family:var(--mono); font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim); margin-bottom:10px; }
+
+/* Textarea */
+#txt-texto { width:100%; min-height:90px; max-height:160px; resize:vertical; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; color:var(--text); font-family:var(--sans); font-size:14px; line-height:1.6; padding:10px 12px; outline:none; transition:border-color .2s; }
+#txt-texto:focus { border-color:var(--accent); }
+#txt-texto::placeholder { color:var(--text-dim); }
+#char-count { margin-top:4px; font-size:11px; font-family:var(--mono); color:var(--text-dim); text-align:right; }
+#char-count.warn { color:var(--yellow); }
+
+/* Select */
+.select-wrap { position:relative; }
+.select-wrap select { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:8px; color:var(--text); font-family:var(--sans); font-size:13px; padding:8px 30px 8px 10px; outline:none; cursor:pointer; transition:border-color .2s; appearance:none; }
+.select-wrap select:focus { border-color:var(--accent); }
+.select-wrap::after { content:'▾'; position:absolute; right:10px; top:50%; transform:translateY(-50%); color:var(--text-dim); pointer-events:none; font-size:11px; }
+
+/* Presets */
+#presets-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.preset-btn { display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 5px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text-soft); font-family:var(--sans); font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; text-align:center; line-height:1.2; }
+.preset-btn .pe { font-size:1.3rem; line-height:1; }
+.preset-btn:hover { border-color:var(--accent); color:var(--text); }
+.preset-btn.activo { background:rgba(124,106,255,.18); border-color:var(--accent); color:var(--accent2); font-weight:700; }
+
+/* Presets personalizados */
+#presets-custom { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+.preset-custom-btn { display:flex; align-items:center; gap:5px; padding:4px 10px 4px 12px; border-radius:99px; border:1px solid var(--border2); background:var(--surface3); color:var(--text-soft); font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; }
+.preset-custom-btn:hover { border-color:var(--accent); color:var(--text); }
+.preset-custom-btn.activo { border-color:var(--accent); color:var(--accent2); background:rgba(124,106,255,.15); }
+.preset-custom-del { width:14px; height:14px; border-radius:50%; border:none; background:rgba(255,255,255,.1); color:var(--text-dim); font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .14s; line-height:1; }
+.preset-custom-del:hover { background:rgba(255,92,106,.3); color:var(--red); }
+#btn-guardar-preset { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:99px; border:1px dashed var(--border2); background:transparent; color:var(--text-dim); font-size:11px; cursor:pointer; transition:all .15s; font-family:var(--sans); }
+#btn-guardar-preset:hover { border-color:var(--accent); color:var(--accent2); }
+
+/* Sliders */
+.slider-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.slider-row:last-child { margin-bottom:0; }
+.slider-label-col { display:flex; flex-direction:column; width:68px; flex-shrink:0; }
+.sl-name { font-size:10px; font-family:var(--mono); color:var(--text-soft); text-transform:uppercase; letter-spacing:.06em; }
+.sl-val  { font-size:12px; font-family:var(--mono); color:var(--accent2); font-weight:700; margin-top:1px; }
+input[type="range"] { flex:1; appearance:none; height:3px; border-radius:99px; background:var(--border2); outline:none; cursor:pointer; }
+input[type="range"]::-webkit-slider-thumb { appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent2); box-shadow:0 0 0 3px rgba(124,106,255,.25); transition:box-shadow .15s; }
+input[type="range"]::-webkit-slider-thumb:hover { box-shadow:0 0 0 5px rgba(124,106,255,.35); }
+.sl-reset { width:20px; height:20px; border-radius:5px; border:1px solid var(--border2); background:transparent; color:var(--text-dim); font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .14s; }
+.sl-reset:hover { color:var(--text); background:var(--surface2); }
+
+/* Nombre */
+.input-row { display:flex; align-items:center; gap:7px; }
+.input-row input { flex:1; background:var(--surface2); border:1px solid var(--border2); border-radius:8px; color:var(--text); font-family:var(--mono); font-size:12px; padding:7px 10px; outline:none; transition:border-color .2s; }
+.input-row input:focus { border-color:var(--accent); }
+.input-row input::placeholder { color:var(--text-dim); }
+.ext-label { font-family:var(--mono); font-size:12px; color:var(--text-dim); flex-shrink:0; }
+
+/* Botones acción */
+#acciones-wrap { display:flex; gap:8px; }
+#btn-preview { flex-shrink:0; padding:11px 14px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text-soft); font-family:var(--sans); font-size:13px; font-weight:700; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:6px; }
+#btn-preview:hover { border-color:var(--green); color:var(--green); }
+#btn-preview.cargando { opacity:.6; cursor:not-allowed; }
+#btn-generar { flex:1; padding:11px; border-radius:10px; border:none; background:var(--accent); color:#fff; font-family:var(--sans); font-size:14px; font-weight:700; cursor:pointer; transition:background .15s, transform .12s, box-shadow .15s; display:flex; align-items:center; justify-content:center; gap:7px; }
+#btn-generar:hover   { background:var(--accent2); box-shadow:0 4px 20px rgba(124,106,255,.4); }
+#btn-generar:active  { transform:scale(.97); }
+#btn-generar:disabled { background:var(--surface2); color:var(--text-dim); cursor:not-allowed; box-shadow:none; }
+#generando-bar { display:none; height:3px; background:linear-gradient(90deg,var(--accent),var(--green),var(--accent)); background-size:200% 100%; animation:shimmer 1.2s linear infinite; border-radius:99px; margin-top:8px; }
+#generando-bar.visible { display:block; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── Panel derecho ── */
+#panel-der { background:var(--bg); display:flex; flex-direction:column; overflow:hidden; }
+
+/* Vista lote */
+#vista-lote { display:none; flex-direction:column; height:100%; }
+#vista-lote.activa { display:flex; }
+#vista-biblioteca { display:flex; flex-direction:column; height:100%; }
+#vista-biblioteca.oculta { display:none; }
+
+/* Lote */
+#lote-wrap { display:flex; flex-direction:column; flex:1; overflow:hidden; padding:16px 20px; gap:12px; }
+#txt-lote { flex:1; background:var(--surface2); border:1px solid var(--border2); border-radius:10px; color:var(--text); font-family:var(--mono); font-size:12px; line-height:1.8; padding:12px 14px; outline:none; resize:none; transition:border-color .2s; }
+#txt-lote:focus { border-color:var(--accent); }
+#txt-lote::placeholder { color:var(--text-dim); font-family:var(--sans); }
+#lote-info { font-size:11px; font-family:var(--mono); color:var(--text-dim); }
+#lote-info span { color:var(--accent2); font-weight:700; }
+#btn-lote-generar { padding:12px; border-radius:10px; border:none; background:var(--accent); color:#fff; font-family:var(--sans); font-size:14px; font-weight:700; cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:8px; flex-shrink:0; }
+#btn-lote-generar:disabled { background:var(--surface2); color:var(--text-dim); cursor:not-allowed; }
+
+/* Progreso lote */
+#lote-progreso { display:none; flex-direction:column; gap:8px; }
+#lote-progreso.visible { display:flex; }
+.lote-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; background:var(--surface); border:1px solid var(--border); font-size:12px; }
+.lote-item-texto { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-soft); }
+.lote-item-estado { font-family:var(--mono); font-size:11px; flex-shrink:0; }
+.lote-item-estado.en_cola    { color:var(--text-dim); }
+.lote-item-estado.procesando { color:var(--yellow); }
+.lote-item-estado.listo      { color:var(--green); }
+.lote-item-estado.error      { color:var(--red); }
+
+/* Biblioteca */
+#panel-der-header { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; gap:10px; }
+#panel-der-header h2 { font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-dim); white-space:nowrap; }
+#buscador { flex:1; background:var(--surface2); border:1px solid var(--border2); border-radius:7px; color:var(--text); font-family:var(--sans); font-size:12px; padding:6px 10px; outline:none; transition:border-color .2s; }
+#buscador:focus { border-color:var(--accent); }
+#buscador::placeholder { color:var(--text-dim); }
+#btn-refresh { width:28px; height:28px; border-radius:6px; border:1px solid var(--border2); background:transparent; color:var(--text-soft); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; flex-shrink:0; }
+#btn-refresh:hover { color:var(--text); background:var(--surface); }
+#lista-audios { flex:1; overflow-y:auto; padding:10px 18px 20px; scrollbar-width:thin; scrollbar-color:var(--border2) transparent; }
+
+/* Audio item */
+.audio-item { display:grid; grid-template-columns:1fr auto auto auto auto; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface); margin-bottom:6px; transition:border-color .15s; animation:item-in .2s ease both; }
+.audio-item:hover { border-color:var(--border2); }
+.audio-item.oculto { display:none; }
+@keyframes item-in { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+.audio-nombre-wrap { overflow:hidden; }
+.audio-nombre { font-family:var(--mono); font-size:11px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:text; border-radius:4px; padding:2px 4px; transition:background .15s; }
+.audio-nombre:hover { background:var(--surface2); }
+.audio-nombre[contenteditable="true"] { outline:1px solid var(--accent); background:var(--surface2); white-space:nowrap; }
+.audio-meta { font-size:10px; color:var(--text-dim); font-family:var(--mono); white-space:nowrap; }
+.btn-ico { width:27px; height:27px; border-radius:7px; border:1px solid var(--border2); background:var(--surface2); color:var(--text-soft); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .14s; flex-shrink:0; }
+.btn-ico:hover { background:var(--surface); color:var(--text); }
+.btn-ico.play:hover { border-color:var(--green);   color:var(--green); }
+.btn-ico.copy:hover { border-color:var(--accent2);  color:var(--accent2); }
+.btn-ico.down:hover { border-color:var(--yellow);   color:var(--yellow); }
+.btn-ico.del:hover  { border-color:var(--red);      color:var(--red); }
+.btn-ico.playing    { border-color:var(--green); color:var(--green); background:rgba(0,229,160,.08); }
+
+/* Empty */
+#lista-vacia { display:none; flex-direction:column; align-items:center; justify-content:center; height:180px; gap:10px; color:var(--text-dim); font-size:13px; text-align:center; }
+#lista-vacia span { font-size:2.2rem; }
+
+/* ── Player flotante ── */
+#player { display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--border2); border-radius:99px; padding:10px 18px; align-items:center; gap:12px; box-shadow:0 8px 32px rgba(0,0,0,.6); min-width:360px; z-index:100; animation:player-in .25s cubic-bezier(.34,1.56,.64,1) both; }
+#player.visible { display:flex; }
+@keyframes player-in { from{opacity:0;transform:translateX(-50%) translateY(14px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+#player-nombre { font-family:var(--mono); font-size:11px; color:var(--text-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px; }
+#player-progress { flex:1; height:3px; }
+#player-progress::-webkit-slider-thumb { width:10px; height:10px; background:var(--green); }
+#player-time { font-family:var(--mono); font-size:10px; color:var(--text-dim); white-space:nowrap; }
+#btn-player-close { width:22px; height:22px; border-radius:50%; border:none; background:rgba(255,255,255,.08); color:var(--text-soft); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .14s; flex-shrink:0; }
+#btn-player-close:hover { background:rgba(255,92,106,.25); color:var(--red); }
+
+/* ── Comparador A/B ── */
+#ab-wrap { display:none; position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:14px 18px; gap:10px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:99; min-width:380px; }
+#ab-wrap.visible { display:flex; flex-direction:column; }
+#ab-titulo { font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:.1em; color:var(--text-dim); }
+#ab-botones { display:flex; gap:8px; }
+.ab-btn { flex:1; padding:10px; border-radius:10px; border:1px solid var(--border2); background:var(--surface2); color:var(--text-soft); font-family:var(--sans); font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; gap:6px; overflow:hidden; }
+.ab-btn:hover { border-color:var(--accent); color:var(--text); }
+.ab-btn.jugando { border-color:var(--green); color:var(--green); background:rgba(0,229,160,.08); }
+#ab-close { align-self:flex-end; width:22px; height:22px; border-radius:50%; border:none; background:rgba(255,255,255,.08); color:var(--text-soft); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+
+/* ── Modal guardar preset ── */
+#modal-preset { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; align-items:center; justify-content:center; }
+#modal-preset.visible { display:flex; }
+#modal-preset-box { background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:22px; width:320px; display:flex; flex-direction:column; gap:14px; box-shadow:0 12px 40px rgba(0,0,0,.6); }
+#modal-preset-box h3 { font-size:14px; font-weight:700; }
+#modal-preset-box p  { font-size:12px; color:var(--text-soft); }
+#inp-preset-nombre { width:100%; background:var(--surface2); border:1px solid var(--border2); border-radius:8px; color:var(--text); font-family:var(--sans); font-size:13px; padding:9px 12px; outline:none; transition:border-color .2s; }
+#inp-preset-nombre:focus { border-color:var(--accent); }
+.modal-btns { display:flex; gap:8px; }
+.modal-btns button { flex:1; padding:10px; border-radius:8px; border:none; font-family:var(--sans); font-size:13px; font-weight:700; cursor:pointer; transition:all .15s; }
+#btn-preset-ok     { background:var(--accent); color:#fff; }
+#btn-preset-cancel { background:var(--surface2); color:var(--text-soft); border:1px solid var(--border2); }
+
+/* ── Cola indicador ── */
+#cola-panel { display:none; position:fixed; bottom:20px; right:20px; background:var(--surface); border:1px solid var(--border2); border-radius:12px; padding:12px 16px; font-size:12px; font-family:var(--mono); color:var(--text-soft); box-shadow:0 4px 20px rgba(0,0,0,.5); z-index:98; min-width:200px; }
+#cola-panel.visible { display:block; }
+#cola-panel-titulo { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-dim); margin-bottom:8px; }
+.cola-job { display:flex; align-items:center; gap:8px; margin-bottom:4px; font-size:11px; }
+.cola-job-texto { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cola-estado-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.cola-estado-dot.en_cola    { background:var(--text-dim); }
+.cola-estado-dot.procesando { background:var(--yellow); box-shadow:0 0 4px var(--yellow); }
+.cola-estado-dot.listo      { background:var(--green); }
+.cola-estado-dot.error      { background:var(--red); }
+
+/* ── Toast ── */
+#toast { position:fixed; top:66px; left:50%; transform:translateX(-50%) translateY(-8px); background:var(--surface); border:1px solid var(--border2); border-radius:8px; padding:9px 16px; font-size:13px; font-weight:500; color:var(--text); box-shadow:0 4px 20px rgba(0,0,0,.5); opacity:0; transition:opacity .2s,transform .2s; pointer-events:none; z-index:300; white-space:nowrap; }
+#toast.visible { opacity:1; transform:translateX(-50%) translateY(0); }
+#toast.ok  { border-color:var(--green); }
+#toast.err { border-color:var(--red); }
+#toast.info { border-color:var(--accent2); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Topbar -->
+  <div id="topbar">
+    <div id="topbar-logo">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="8" stroke="#7c6aff" stroke-width="1.5"/>
+        <circle cx="9" cy="9" r="3.5" fill="#7c6aff" opacity=".35"/>
+        <circle cx="9" cy="9" r="1.5" fill="#a594ff"/>
+        <line x1="9" y1="1" x2="9" y2="4" stroke="#7c6aff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="9" y1="14" x2="9" y2="17" stroke="#7c6aff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="1" y1="9" x2="4" y2="9" stroke="#7c6aff" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="14" y1="9" x2="17" y2="9" stroke="#7c6aff" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      TTS STUDIO
+    </div>
+    <div id="topbar-tabs">
+      <button class="tab-btn activo" data-tab="individual">Individual</button>
+      <button class="tab-btn" data-tab="lote">Por lotes</button>
+    </div>
+    <div id="topbar-status">
+      <span id="cola-badge">0 en cola</span>
+      <div id="status-dot"></div>
+      <span id="status-txt">conectando…</span>
+    </div>
+  </div>
+
+  <!-- Panel izquierdo (controles) -->
+  <div id="panel-izq">
+
+    <!-- Texto -->
+    <div class="seccion">
+      <div class="seccion-titulo">Texto</div>
+      <textarea id="txt-texto" placeholder="Escribe el texto aquí…" maxlength="800"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+      <div id="char-count">0 / 800</div>
+    </div>
+
+    <!-- Voz -->
+    <div class="seccion">
+      <div class="seccion-titulo">Voz</div>
+      <div class="select-wrap"><select id="sel-voz"></select></div>
+    </div>
+
+    <!-- Presets -->
+    <div class="seccion">
+      <div class="seccion-titulo">Estilo</div>
+      <div id="presets-grid"></div>
+      <div id="presets-custom"></div>
+    </div>
+
+    <!-- Ajuste fino -->
+    <div class="seccion">
+      <div class="seccion-titulo">Ajuste fino</div>
+      <div class="slider-row">
+        <div class="slider-label-col"><span class="sl-name">Velocidad</span><span class="sl-val" id="val-rate">0%</span></div>
+        <input type="range" id="sl-rate" min="-50" max="100" value="0" step="5">
+        <button class="sl-reset" data-target="sl-rate" data-default="0">↺</button>
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-col"><span class="sl-name">Tono</span><span class="sl-val" id="val-pitch">0 Hz</span></div>
+        <input type="range" id="sl-pitch" min="-20" max="20" value="0" step="1">
+        <button class="sl-reset" data-target="sl-pitch" data-default="0">↺</button>
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-col"><span class="sl-name">Volumen</span><span class="sl-val" id="val-vol">0%</span></div>
+        <input type="range" id="sl-vol" min="-50" max="50" value="0" step="5">
+        <button class="sl-reset" data-target="sl-vol" data-default="0">↺</button>
+      </div>
+    </div>
+
+    <!-- Nombre -->
+    <div class="seccion">
+      <div class="seccion-titulo">Nombre del archivo</div>
+      <div class="input-row">
+        <input type="text" id="txt-nombre" placeholder="auto-generado" autocomplete="off">
+        <span class="ext-label">.mp3</span>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="seccion" style="border-bottom:none;">
+      <div id="acciones-wrap">
+        <button id="btn-preview" title="Preview sin guardar">👁 Preview</button>
+        <button id="btn-generar">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1L11 6.5L2 12V1Z" fill="white"/></svg>
+          Generar
+        </button>
+      </div>
+      <div id="generando-bar"></div>
+    </div>
+
+  </div>
+
+  <!-- Panel derecho -->
+  <div id="panel-der">
+
+    <!-- Vista: biblioteca -->
+    <div id="vista-biblioteca">
+      <div id="panel-der-header">
+        <h2>Biblioteca · <span id="count-archivos">0</span></h2>
+        <input type="search" id="buscador" placeholder="Buscar…">
+        <button id="btn-ab" title="Comparar A/B" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text-soft);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:var(--mono);transition:all .15s;flex-shrink:0;">A/B</button>
+        <button id="btn-refresh">↺</button>
+      </div>
+      <div id="lista-audios">
+        <div id="lista-vacia"><span>🎙️</span>Sin audios aún.<br><span style="font-size:11px">Cmd+Enter para generar rápido.</span></div>
+      </div>
+    </div>
+
+    <!-- Vista: lote -->
+    <div id="vista-lote">
+      <div id="panel-der-header" style="flex-shrink:0;">
+        <h2>Generación por lotes</h2>
+      </div>
+      <div id="lote-wrap">
+        <div id="lote-info">
+          <span id="lote-count">0</span> líneas · Usa la misma voz y parámetros del panel izquierdo
+        </div>
+        <textarea id="txt-lote"
+          placeholder="Una frase por línea:&#10;¡Muy bien!&#10;¡Lo lograste!&#10;¡Sigue intentando!&#10;&#10;Prefijo opcional separado por |:&#10;celebracion|¡Muy bien!&#10;error|¡Sigue intentando!"
+          autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+        <div id="lote-progreso"></div>
+        <button id="btn-lote-generar">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1L11 6.5L2 12V1Z" fill="white"/></svg>
+          Generar lote
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Player flotante -->
+<div id="player">
+  <span id="player-nombre">—</span>
+  <input type="range" id="player-progress" value="0" min="0" max="100" step="0.1">
+  <span id="player-time">0:00</span>
+  <button id="btn-player-close">×</button>
+</div>
+
+<!-- Comparador A/B -->
+<div id="ab-wrap">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span id="ab-titulo">Comparar A / B</span>
+    <button id="ab-close">×</button>
+  </div>
+  <div id="ab-botones">
+    <button class="ab-btn" id="ab-btn-a">▶ A: <span id="ab-nombre-a">—</span></button>
+    <button class="ab-btn" id="ab-btn-b">▶ B: <span id="ab-nombre-b">—</span></button>
+  </div>
+  <div style="font-size:10px;font-family:var(--mono);color:var(--text-dim);">
+    Selecciona dos audios en la biblioteca para comparar
+  </div>
+</div>
+
+<!-- Modal guardar preset -->
+<div id="modal-preset">
+  <div id="modal-preset-box">
+    <h3>Guardar como preset</h3>
+    <p>Dale un nombre a esta configuración de voz y parámetros.</p>
+    <input type="text" id="inp-preset-nombre" placeholder="Ej: Dalia emocionada" autocomplete="off">
+    <div class="modal-btns">
+      <button id="btn-preset-cancel">Cancelar</button>
+      <button id="btn-preset-ok">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<audio id="audio-el"></audio>
+<audio id="audio-preview-el"></audio>
+
+<script>
+const API = 'http://localhost:8765';
+
+// ─── Presets built-in ─────────────────────────────────────────────
+const PRESETS = [
+  { id:'neutro',       emoji:'⚪', label:'Neutro',       rate:0,   pitch:0,  vol:0  },
+  { id:'emocionado',   emoji:'🎉', label:'Emocionado',   rate:20,  pitch:10, vol:10 },
+  { id:'alegre',       emoji:'😄', label:'Alegre',       rate:10,  pitch:8,  vol:5  },
+  { id:'amigable',     emoji:'🤝', label:'Amigable',     rate:-10, pitch:5,  vol:0  },
+  { id:'esperanzador', emoji:'🌅', label:'Esperanzador', rate:-5,  pitch:6,  vol:-5 },
+  { id:'triste',       emoji:'😢', label:'Triste',       rate:-25, pitch:-8, vol:-5 },
+  { id:'susurro',      emoji:'🤫', label:'Susurro',      rate:-30, pitch:-5, vol:-20},
+  { id:'gritando',     emoji:'📢', label:'Gritando',     rate:10,  pitch:5,  vol:20 },
+  { id:'hostil',       emoji:'😤', label:'Hostil',       rate:15,  pitch:-3, vol:10 },
+];
+
+// ─── Estado ───────────────────────────────────────────────────────
+let presetActivo   = 'neutro';
+let presetsCustom  = JSON.parse(localStorage.getItem('tts_presets_custom') || '[]');
+let voces          = {};
+let tabActiva      = 'individual';
+let modoAB         = false;
+let abSeleccion    = [];   // hasta 2 nombres de archivo
+let audioActual    = '';
+let trabajosActivos = {};  // job_id → {estado, texto, nombre}
+let pollingTimer   = null;
+
+// ─── Init ─────────────────────────────────────────────────────────
+async function init() {
+  await verificarServidor();
+  await cargarVoces();
+  renderPresetsBuiltin();
+  renderPresetsCustom();
+  bindEventos();
+  await cargarArchivos();
+}
+
+// ─── Servidor ─────────────────────────────────────────────────────
+async function verificarServidor() {
+  try {
+    const res = await fetch(`${API}/voces`);
+    if (res.ok) setStatus('ok', 'servidor activo');
+  } catch {
+    setStatus('error', 'sin conexión — ¿está corriendo server.py?');
+    mostrarToast('No se puede conectar al servidor', 'err', 5000);
+  }
+}
+
+function setStatus(tipo, txt) {
+  document.getElementById('status-dot').className = tipo;
+  document.getElementById('status-txt').textContent = txt;
+}
+
+// ─── Voces ────────────────────────────────────────────────────────
+async function cargarVoces() {
+  try {
+    const res = await fetch(`${API}/voces`);
+    voces = await res.json();
+    const sel = document.getElementById('sel-voz');
+    sel.innerHTML = '';
+    Object.entries(voces).forEach(([id, info]) => {
+      const opt = document.createElement('option');
+      opt.value = id; opt.textContent = info.label;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error(e); }
+}
+
+// ─── Presets built-in ─────────────────────────────────────────────
+function renderPresetsBuiltin() {
+  const grid = document.getElementById('presets-grid');
+  grid.innerHTML = '';
+  PRESETS.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (p.id === presetActivo ? ' activo' : '');
+    btn.dataset.id = p.id;
+    btn.innerHTML = `<span class="pe">${p.emoji}</span>${p.label}`;
+    btn.addEventListener('click', () => aplicarPreset(p.id));
+    grid.appendChild(btn);
+  });
+}
+
+function aplicarPreset(id, desde = 'builtin') {
+  let p;
+  if (desde === 'builtin') {
+    p = PRESETS.find(x => x.id === id);
+    presetActivo = id;
+  } else {
+    p = presetsCustom.find(x => x.id === id);
+    presetActivo = id;
+    if (p.voz) document.getElementById('sel-voz').value = p.voz;
+  }
+  if (!p) return;
+  setSlider('sl-rate',  p.rate);
+  setSlider('sl-pitch', p.pitch);
+  setSlider('sl-vol',   p.vol);
+  actualizarMarcaPreset();
+}
+
+function actualizarMarcaPreset() {
+  const r = slVal('sl-rate'), pi = slVal('sl-pitch'), v = slVal('sl-vol');
+  const vozActual = document.getElementById('sel-voz').value;
+  const matchBuiltin = PRESETS.find(x => x.rate === r && x.pitch === pi && x.vol === v);
+  const matchCustom  = presetsCustom.find(x => x.rate === r && x.pitch === pi && x.vol === v && (!x.voz || x.voz === vozActual));
+  presetActivo = matchBuiltin?.id || matchCustom?.id || '';
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('activo', b.dataset.id === presetActivo));
+  document.querySelectorAll('.preset-custom-btn').forEach(b => b.classList.toggle('activo', b.dataset.id === presetActivo));
+}
+
+// ─── Presets custom ───────────────────────────────────────────────
+function renderPresetsCustom() {
+  const wrap = document.getElementById('presets-custom');
+  wrap.innerHTML = '';
+
+  presetsCustom.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-custom-btn' + (p.id === presetActivo ? ' activo' : '');
+    btn.dataset.id = p.id;
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = p.label;
+    const delEl = document.createElement('button');
+    delEl.className = 'preset-custom-del';
+    delEl.textContent = '×';
+    delEl.title = 'Eliminar preset';
+    delEl.addEventListener('click', e => { e.stopPropagation(); eliminarPresetCustom(p.id); });
+
+    btn.appendChild(labelEl);
+    btn.appendChild(delEl);
+    btn.addEventListener('click', () => aplicarPreset(p.id, 'custom'));
+    wrap.appendChild(btn);
+  });
+
+  // Botón guardar
+  const btnGuardar = document.createElement('button');
+  btnGuardar.id = 'btn-guardar-preset';
+  btnGuardar.innerHTML = '+ Guardar configuración actual';
+  btnGuardar.addEventListener('click', () => abrirModalPreset());
+  wrap.appendChild(btnGuardar);
+}
+
+function abrirModalPreset() {
+  document.getElementById('inp-preset-nombre').value = '';
+  document.getElementById('modal-preset').classList.add('visible');
+  setTimeout(() => document.getElementById('inp-preset-nombre').focus(), 100);
+}
+
+function guardarPresetCustom() {
+  const nombre = document.getElementById('inp-preset-nombre').value.trim();
+  if (!nombre) return;
+  const p = {
+    id:    `custom_${Date.now()}`,
+    label: nombre,
+    rate:  slVal('sl-rate'),
+    pitch: slVal('sl-pitch'),
+    vol:   slVal('sl-vol'),
+    voz:   document.getElementById('sel-voz').value,
+  };
+  presetsCustom.push(p);
+  localStorage.setItem('tts_presets_custom', JSON.stringify(presetsCustom));
+  renderPresetsCustom();
+  document.getElementById('modal-preset').classList.remove('visible');
+  mostrarToast(`Preset "${nombre}" guardado`, 'ok');
+}
+
+function eliminarPresetCustom(id) {
+  presetsCustom = presetsCustom.filter(p => p.id !== id);
+  localStorage.setItem('tts_presets_custom', JSON.stringify(presetsCustom));
+  renderPresetsCustom();
+}
+
+// ─── Sliders ──────────────────────────────────────────────────────
+function slVal(id) { return parseInt(document.getElementById(id).value); }
+
+function setSlider(id, val) {
+  const sl = document.getElementById(id);
+  sl.value = val;
+  sl.dispatchEvent(new Event('input', {bubbles:false}));
+}
+
+function bindSliders() {
+  [
+    {id:'sl-rate',  lbl:'val-rate',  fmt: v=>`${v>0?'+':''}${v}%`},
+    {id:'sl-pitch', lbl:'val-pitch', fmt: v=>`${v>0?'+':''}${v} Hz`},
+    {id:'sl-vol',   lbl:'val-vol',   fmt: v=>`${v>0?'+':''}${v}%`},
+  ].forEach(({id, lbl, fmt}) => {
+    const sl  = document.getElementById(id);
+    const lbl2 = document.getElementById(lbl);
+    sl.addEventListener('input', () => {
+      lbl2.textContent = fmt(parseInt(sl.value));
+      actualizarMarcaPreset();
+    });
+    lbl2.textContent = fmt(parseInt(sl.value));
+  });
+
+  document.querySelectorAll('.sl-reset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = document.getElementById(btn.dataset.target);
+      t.value = btn.dataset.default;
+      t.dispatchEvent(new Event('input'));
+    });
+  });
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────
+function bindTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabActiva = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('activo', b.dataset.tab === tabActiva));
+      document.getElementById('vista-biblioteca').classList.toggle('oculta', tabActiva === 'lote');
+      document.getElementById('vista-lote').classList.toggle('activa', tabActiva === 'lote');
+    });
+  });
+}
+
+// ─── Archivos ─────────────────────────────────────────────────────
+async function cargarArchivos() {
+  try {
+    const res  = await fetch(`${API}/archivos`);
+    const data = await res.json();
+    renderLista(data);
+    document.getElementById('count-archivos').textContent = data.length;
+  } catch { renderLista([]); }
+}
+
+function renderLista(archivos) {
+  const lista = document.getElementById('lista-audios');
+  const vacio = document.getElementById('lista-vacia');
+  lista.querySelectorAll('.audio-item').forEach(el => el.remove());
+  if (!archivos.length) { vacio.style.display = 'flex'; return; }
+  vacio.style.display = 'none';
+
+  const q = document.getElementById('buscador').value.toLowerCase();
+  archivos.forEach(arch => {
+    const item = document.createElement('div');
+    item.className = 'audio-item' + (q && !arch.nombre.toLowerCase().includes(q) ? ' oculto' : '');
+    item.dataset.nombre = arch.nombre;
+    if (modoAB && abSeleccion.includes(arch.nombre)) item.style.outline = '2px solid var(--accent)';
+
+    const kb = (arch.tamaño / 1024).toFixed(1);
+    item.innerHTML = `
+      <div class="audio-nombre-wrap">
+        <div class="audio-nombre" title="Doble clic para renombrar" data-nombre="${arch.nombre}">${arch.nombre}</div>
+        <div class="audio-meta">${kb} KB · ${arch.fecha}</div>
+      </div>
+      <button class="btn-ico play" title="Reproducir">▶</button>
+      <button class="btn-ico copy" title="Copiar ruta">⎘</button>
+      <button class="btn-ico down" title="Descargar">⬇</button>
+      <button class="btn-ico del"  title="Eliminar">✕</button>
+    `;
+
+    // Renombrar — doble clic en el nombre
+    const nombreEl = item.querySelector('.audio-nombre');
+    nombreEl.addEventListener('dblclick', () => iniciarRenombrado(nombreEl, arch.nombre, item));
+
+    item.querySelector('.play').addEventListener('click', () => {
+      if (modoAB) { seleccionarParaAB(arch.nombre, item); return; }
+      reproducir(arch.nombre, item);
+    });
+    item.querySelector('.copy').addEventListener('click', () => copiarRuta(arch.nombre, arch.ruta));
+    item.querySelector('.down').addEventListener('click', () => descargar(arch.nombre));
+    item.querySelector('.del').addEventListener('click',  () => eliminar(arch.nombre, item));
+
+    lista.insertBefore(item, lista.firstChild);
+  });
+}
+
+// ─── Renombrar ────────────────────────────────────────────────────
+function iniciarRenombrado(el, nombreActual, item) {
+  el.contentEditable = 'true';
+  el.focus();
+  // Seleccionar todo sin la extensión
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+
+  const confirmar = async () => {
+    el.contentEditable = 'false';
+    const nuevo = el.textContent.trim();
+    if (!nuevo || nuevo === nombreActual) { el.textContent = nombreActual; return; }
+    try {
+      const res  = await fetch(`${API}/audio/${encodeURIComponent(nombreActual)}/renombrar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nuevo }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        item.dataset.nombre = data.nombre;
+        el.textContent = data.nombre;
+        el.dataset.nombre = data.nombre;
+        mostrarToast('Renombrado', 'ok');
+      } else {
+        el.textContent = nombreActual;
+        mostrarToast(data.detail || 'Error al renombrar', 'err');
+      }
+    } catch { el.textContent = nombreActual; }
+  };
+
+  el.addEventListener('blur', confirmar, { once: true });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if (e.key === 'Escape') { el.textContent = nombreActual; el.blur(); }
+  }, { once: true });
+}
+
+// ─── Copiar ruta ──────────────────────────────────────────────────
+async function copiarRuta(nombre, ruta) {
+  try {
+    // Intentar copiar la ruta del disco
+    await navigator.clipboard.writeText(ruta || nombre);
+    mostrarToast('Ruta copiada', 'info');
+  } catch {
+    mostrarToast('No se pudo acceder al portapapeles', 'err');
+  }
+}
+
+// ─── Buscador ─────────────────────────────────────────────────────
+function bindBuscador() {
+  document.getElementById('buscador').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.audio-item').forEach(item => {
+      item.classList.toggle('oculto', !!q && !item.dataset.nombre.toLowerCase().includes(q));
+    });
+  });
+}
+
+// ─── Comparador A/B ───────────────────────────────────────────────
+const audioAB = new Audio();
+
+function bindAB() {
+  document.getElementById('btn-ab').addEventListener('click', () => {
+    modoAB = !modoAB;
+    abSeleccion = [];
+    const btn = document.getElementById('btn-ab');
+    btn.style.color = modoAB ? 'var(--accent2)' : '';
+    btn.style.borderColor = modoAB ? 'var(--accent)' : '';
+    if (!modoAB) {
+      document.getElementById('ab-wrap').classList.remove('visible');
+      document.querySelectorAll('.audio-item').forEach(i => i.style.outline = '');
+    } else {
+      mostrarToast('Selecciona 2 audios para comparar', 'info', 3000);
+      document.getElementById('ab-wrap').classList.add('visible');
+    }
+  });
+
+  document.getElementById('ab-close').addEventListener('click', () => {
+    modoAB = false; abSeleccion = [];
+    document.getElementById('ab-wrap').classList.remove('visible');
+    document.getElementById('btn-ab').style.color = '';
+    document.getElementById('btn-ab').style.borderColor = '';
+    document.querySelectorAll('.audio-item').forEach(i => i.style.outline = '');
+  });
+
+  ['a','b'].forEach(slot => {
+    document.getElementById(`ab-btn-${slot}`).addEventListener('click', () => {
+      const nombre = abSeleccion[slot === 'a' ? 0 : 1];
+      if (!nombre) return;
+      if (!audioAB.paused) audioAB.pause();
+      document.querySelectorAll('.ab-btn').forEach(b => b.classList.remove('jugando'));
+      audioAB.src = `${API}/audio/${encodeURIComponent(nombre)}`;
+      audioAB.play();
+      document.getElementById(`ab-btn-${slot}`).classList.add('jugando');
+    });
+  });
+
+  audioAB.addEventListener('ended', () => {
+    document.querySelectorAll('.ab-btn').forEach(b => b.classList.remove('jugando'));
+  });
+}
+
+function seleccionarParaAB(nombre, item) {
+  const idx = abSeleccion.indexOf(nombre);
+  if (idx >= 0) {
+    abSeleccion.splice(idx, 1);
+    item.style.outline = '';
+  } else {
+    if (abSeleccion.length >= 2) {
+      // Quitar el más viejo
+      const viejo = abSeleccion.shift();
+      document.querySelectorAll('.audio-item').forEach(i => {
+        if (i.dataset.nombre === viejo) i.style.outline = '';
+      });
+    }
+    abSeleccion.push(nombre);
+    item.style.outline = '2px solid var(--accent)';
+  }
+
+  const [a, b] = abSeleccion;
+  document.getElementById('ab-nombre-a').textContent = a ? a.replace('.mp3','').slice(0,20) : '—';
+  document.getElementById('ab-nombre-b').textContent = b ? b.replace('.mp3','').slice(0,20) : '—';
+}
+
+// ─── Audio ────────────────────────────────────────────────────────
+const audioEl   = document.getElementById('audio-el');
+const player    = document.getElementById('player');
+const playerNom = document.getElementById('player-nombre');
+const playerPrg = document.getElementById('player-progress');
+const playerTim = document.getElementById('player-time');
+
+function reproducir(nombre, itemEl) {
+  document.querySelectorAll('.btn-ico.play.playing').forEach(b => { b.textContent='▶'; b.classList.remove('playing'); });
+  if (audioActual === nombre && !audioEl.paused) { audioEl.pause(); audioActual=''; player.classList.remove('visible'); return; }
+  audioActual = nombre;
+  audioEl.src = `${API}/audio/${encodeURIComponent(nombre)}`;
+  audioEl.play();
+  const pb = itemEl?.querySelector('.play');
+  if (pb) { pb.textContent = '⏸'; pb.classList.add('playing'); }
+  playerNom.textContent = nombre;
+  player.classList.add('visible');
+}
+
+audioEl.addEventListener('timeupdate', () => {
+  if (!audioEl.duration) return;
+  playerPrg.value = (audioEl.currentTime / audioEl.duration) * 100;
+  playerTim.textContent = fmtT(audioEl.currentTime);
+});
+audioEl.addEventListener('ended', () => {
+  document.querySelectorAll('.btn-ico.play.playing').forEach(b => { b.textContent='▶'; b.classList.remove('playing'); });
+  playerPrg.value = 0; audioActual = '';
+});
+playerPrg.addEventListener('input', () => {
+  if (audioEl.duration) audioEl.currentTime = (playerPrg.value / 100) * audioEl.duration;
+});
+document.getElementById('btn-player-close').addEventListener('click', () => {
+  audioEl.pause(); player.classList.remove('visible'); audioActual = '';
+  document.querySelectorAll('.btn-ico.play.playing').forEach(b => { b.textContent='▶'; b.classList.remove('playing'); });
+});
+
+function fmtT(s) { return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`; }
+function descargar(nombre) { const a=document.createElement('a'); a.href=`${API}/audio/${encodeURIComponent(nombre)}`; a.download=nombre; a.click(); }
+async function eliminar(nombre, itemEl) {
+  if (!confirm(`¿Eliminar ${nombre}?`)) return;
+  await fetch(`${API}/audio/${encodeURIComponent(nombre)}`, { method:'DELETE' });
+  itemEl.style.opacity='0'; itemEl.style.transition='opacity .2s';
+  setTimeout(() => { itemEl.remove(); cargarArchivos(); }, 200);
+  mostrarToast('Eliminado', 'ok');
+}
+
+// ─── Preview ──────────────────────────────────────────────────────
+const audioPreviewEl = document.getElementById('audio-preview-el');
+
+async function preview() {
+  const texto = document.getElementById('txt-texto').value.trim();
+  if (!texto) { mostrarToast('Escribe algún texto primero', 'err'); return; }
+  const btn = document.getElementById('btn-preview');
+  btn.classList.add('cargando'); btn.textContent = '…';
+  try {
+    const res  = await fetch(`${API}/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto, voz:vozActual(), rate:rateActual(), pitch:pitchActual(), volume:volActual() }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      audioPreviewEl.src = `${API}${data.ruta}?t=${Date.now()}`;
+      audioPreviewEl.play();
+      mostrarToast('Preview listo', 'ok');
+    } else {
+      mostrarToast(data.detail || 'Error en preview', 'err');
+    }
+  } catch { mostrarToast('Error al conectar', 'err'); }
+  finally { btn.classList.remove('cargando'); btn.innerHTML = '👁 Preview'; }
+}
+
+// ─── Generar (con cola) ───────────────────────────────────────────
+function vozActual()   { return document.getElementById('sel-voz').value; }
+function rateActual()  { const v=slVal('sl-rate');  return `${v>=0?'+':''}${v}%`; }
+function pitchActual() { const v=slVal('sl-pitch'); return `${v>=0?'+':''}${v}Hz`; }
+function volActual()   { const v=slVal('sl-vol');   return `${v>=0?'+':''}${v}%`; }
+
+async function generar() {
+  const texto = document.getElementById('txt-texto').value.trim();
+  if (!texto) { mostrarToast('Escribe algún texto primero', 'err'); return; }
+
+  const btn = document.getElementById('btn-generar');
+  const bar = document.getElementById('generando-bar');
+  btn.disabled = true; btn.innerHTML = '<span style="opacity:.6">En cola…</span>';
+  bar.classList.add('visible');
+
+  try {
+    const res  = await fetch(`${API}/generar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        texto, voz: vozActual(), rate: rateActual(),
+        pitch: pitchActual(), volume: volActual(),
+        nombre: document.getElementById('txt-nombre').value.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      document.getElementById('txt-nombre').value = '';
+      registrarTrabajo(data.job_id, texto, data.nombre);
+    } else {
+      mostrarToast(data.detail || 'Error', 'err');
+    }
+  } catch { mostrarToast('Sin conexión al servidor', 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1L11 6.5L2 12V1Z" fill="white"/></svg> Generar';
+    bar.classList.remove('visible');
+  }
+}
+
+// ─── Cola / polling ───────────────────────────────────────────────
+function registrarTrabajo(jid, texto, nombre) {
+  trabajosActivos[jid] = { estado: 'en_cola', texto: texto.slice(0,40), nombre };
+  actualizarBadgeCola();
+  if (!pollingTimer) pollingTimer = setInterval(pollTrabajosActivos, 700);
+}
+
+async function pollTrabajosActivos() {
+  const ids = Object.keys(trabajosActivos);
+  if (!ids.length) { clearInterval(pollingTimer); pollingTimer = null; return; }
+
+  try {
+    const res  = await fetch(`${API}/lote/estado?ids=${ids.join(',')}`);
+    const data = await res.json();
+
+    let huboListo = false;
+    ids.forEach(jid => {
+      const j = data[jid];
+      if (!j) return;
+      trabajosActivos[jid].estado = j.estado;
+      if (j.estado === 'listo' || j.estado === 'error') {
+        if (j.estado === 'listo') {
+          mostrarToast(`✓ ${j.nombre || trabajosActivos[jid].nombre}`, 'ok');
+          huboListo = true;
+        } else {
+          mostrarToast(`Error: ${j.error || 'desconocido'}`, 'err');
+        }
+        delete trabajosActivos[jid];
+      }
+    });
+
+    actualizarBadgeCola();
+    if (huboListo) await cargarArchivos();
+    if (!Object.keys(trabajosActivos).length) { clearInterval(pollingTimer); pollingTimer = null; }
+  } catch { /* servidor ocupado */ }
+}
+
+function actualizarBadgeCola() {
+  const n   = Object.keys(trabajosActivos).length;
+  const bdg = document.getElementById('cola-badge');
+  bdg.textContent = `${n} en cola`;
+  bdg.classList.toggle('visible', n > 0);
+}
+
+// ─── Lote ─────────────────────────────────────────────────────────
+async function generarLote() {
+  const raw = document.getElementById('txt-lote').value.trim();
+  if (!raw) { mostrarToast('Escribe al menos una línea', 'err'); return; }
+
+  const lineas = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const items  = lineas.map(l => {
+    const partes = l.split('|');
+    return partes.length >= 2
+      ? { nombre: partes[0].trim(), texto: partes.slice(1).join('|').trim() }
+      : { texto: l, nombre: '' };
+  }).filter(i => i.texto);
+
+  if (!items.length) { mostrarToast('Sin líneas válidas', 'err'); return; }
+
+  const btn = document.getElementById('btn-lote-generar');
+  btn.disabled = true; btn.innerHTML = 'Enviando…';
+
+  try {
+    const res  = await fetch(`${API}/lote`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items, voz: vozActual(), rate: rateActual(),
+        pitch: pitchActual(), volume: volActual(),
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      // Mostrar progreso
+      const progreso = document.getElementById('lote-progreso');
+      progreso.innerHTML = '';
+      progreso.classList.add('visible');
+      const itemEls = {};
+      data.jobs.forEach(j => {
+        const el = document.createElement('div');
+        el.className = 'lote-item';
+        el.innerHTML = `
+          <span class="lote-item-texto">${j.texto}</span>
+          <span class="lote-item-estado en_cola" data-jid="${j.job_id}">en cola</span>
+        `;
+        progreso.appendChild(el);
+        itemEls[j.job_id] = el.querySelector('.lote-item-estado');
+        trabajosActivos[j.job_id] = { estado: 'en_cola', texto: j.texto, nombre: j.nombre };
+      });
+
+      actualizarBadgeCola();
+      if (!pollingTimer) pollingTimer = setInterval(pollTrabajosActivos, 700);
+
+      // También actualizar el UI del lote con polling local
+      const pollLote = setInterval(async () => {
+        const ids = data.jobs.map(j => j.job_id).join(',');
+        try {
+          const r2 = await fetch(`${API}/lote/estado?ids=${ids}`);
+          const d2 = await r2.json();
+          let todos = true;
+          data.jobs.forEach(j => {
+            const est = d2[j.job_id]?.estado || 'en_cola';
+            const el  = itemEls[j.job_id];
+            if (el) { el.textContent = est; el.className = `lote-item-estado ${est}`; }
+            if (est !== 'listo' && est !== 'error') todos = false;
+          });
+          if (todos) { clearInterval(pollLote); await cargarArchivos(); }
+        } catch {}
+      }, 800);
+
+      mostrarToast(`${data.total} audios en cola`, 'info');
+    } else {
+      mostrarToast(data.detail || 'Error', 'err');
+    }
+  } catch { mostrarToast('Sin conexión', 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1L11 6.5L2 12V1Z" fill="white"/></svg> Generar lote';
+  }
+}
+
+// Contador de líneas en lote
+function bindLote() {
+  const txt = document.getElementById('txt-lote');
+  const cnt = document.getElementById('lote-count');
+  txt.addEventListener('input', () => {
+    const n = txt.value.split('\n').map(l=>l.trim()).filter(Boolean).length;
+    cnt.textContent = n;
+  });
+  document.getElementById('btn-lote-generar').addEventListener('click', generarLote);
+}
+
+// ─── Toast ────────────────────────────────────────────────────────
+let _tt = null;
+function mostrarToast(msg, tipo='', dur=2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `visible ${tipo}`;
+  clearTimeout(_tt);
+  _tt = setTimeout(() => { el.className = ''; }, dur);
+}
+
+// ─── Modal preset ─────────────────────────────────────────────────
+function bindModalPreset() {
+  document.getElementById('btn-preset-ok').addEventListener('click', guardarPresetCustom);
+  document.getElementById('btn-preset-cancel').addEventListener('click', () =>
+    document.getElementById('modal-preset').classList.remove('visible')
+  );
+  document.getElementById('inp-preset-nombre').addEventListener('keydown', e => {
+    if (e.key === 'Enter') guardarPresetCustom();
+    if (e.key === 'Escape') document.getElementById('modal-preset').classList.remove('visible');
+  });
+  document.getElementById('modal-preset').addEventListener('click', e => {
+    if (e.target.id === 'modal-preset') document.getElementById('modal-preset').classList.remove('visible');
+  });
+}
+
+// ─── Bind general ─────────────────────────────────────────────────
+function bindEventos() {
+  // Char count
+  const txt = document.getElementById('txt-texto');
+  const cnt = document.getElementById('char-count');
+  txt.addEventListener('input', () => {
+    const n = txt.value.length;
+    cnt.textContent = `${n} / 800`;
+    cnt.className = n > 650 ? 'warn' : '';
+  });
+
+  bindSliders();
+  bindTabs();
+  bindBuscador();
+  bindLote();
+  bindAB();
+  bindModalPreset();
+
+  document.getElementById('btn-preview').addEventListener('click', preview);
+  document.getElementById('btn-generar').addEventListener('click', generar);
+  document.getElementById('btn-refresh').addEventListener('click', cargarArchivos);
+
+  document.getElementById('txt-texto').addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); generar(); }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
