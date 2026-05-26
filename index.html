@@ -116,7 +116,7 @@ input[type="range"]::-webkit-slider-thumb:hover { box-shadow:0 0 0 5px rgba(124,
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
 /* ── Panel derecho ── */
-#panel-der { background:var(--bg); display:flex; flex-direction:column; overflow:hidden; }
+#panel-der { background:var(--bg); display:flex; flex-direction:column; overflow:hidden; position:relative; }
 
 /* Vista lote */
 #vista-lote { display:none; flex-direction:column; height:100%; }
@@ -229,6 +229,90 @@ input[type="range"]::-webkit-slider-thumb:hover { box-shadow:0 0 0 5px rgba(124,
 #toast.ok  { border-color:var(--green); }
 #toast.err { border-color:var(--red); }
 #toast.info { border-color:var(--accent2); }
+
+/* ── Modal ayuda TTS-Markdown ── */
+#help-modal {
+  display: none;
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 360px;
+  background: var(--surface);
+  border-right: 1px solid var(--border2);
+  box-shadow: 8px 0 32px rgba(0,0,0,.7);
+  flex-direction: column;
+  z-index: 50;
+  overflow: hidden;
+}
+#help-modal.open { display: flex; animation: help-in .2s ease; }
+@keyframes help-in { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.help-modal-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.help-modal-title {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text-dim); flex: 1;
+}
+.help-modal-close {
+  width: 24px; height: 24px; border-radius: 6px;
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--text-soft); font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .14s;
+}
+.help-modal-close:hover { border-color: var(--red); color: var(--red); }
+.help-modal-body {
+  overflow-y: auto; padding: 14px 16px; flex: 1;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.hm-section { margin-bottom: 18px; }
+.hm-section-title {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--accent2); margin-bottom: 8px;
+  padding-bottom: 5px; border-bottom: 1px solid var(--border);
+}
+.hm-row {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 5px 10px; align-items: baseline; margin-bottom: 6px;
+}
+.hm-syntax {
+  font-family: var(--mono); font-size: 11px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 4px; padding: 2px 6px;
+  color: var(--accent2); white-space: nowrap;
+}
+.hm-desc { font-size: 11px; color: var(--text-soft); line-height: 1.5; }
+.hm-example {
+  background: #0a0a0f; border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px;
+  font-family: var(--mono); font-size: 10px;
+  color: rgba(232,232,238,.5); line-height: 1.9;
+  white-space: pre-wrap; word-break: break-all;
+  margin-top: 6px;
+}
+.hm-example em { color: var(--accent2); font-style: normal; }
+.hm-ipa-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 3px 8px; margin-top: 6px;
+}
+.hm-ipa-row { display: flex; gap: 6px; font-size: 10px; font-family: var(--mono); }
+.hm-ipa-sym { color: var(--accent2); width: 16px; flex-shrink: 0; }
+.hm-ipa-def { color: var(--text-soft); }
+.btn-help {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1px solid rgba(124,106,255,.4);
+  background: transparent; color: var(--accent2);
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center;
+  justify-content: center; transition: all .15s;
+  flex-shrink: 0; vertical-align: middle; margin-left: 6px;
+  line-height: 1;
+}
+.btn-help:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 </style>
 </head>
 <body>
@@ -264,7 +348,7 @@ input[type="range"]::-webkit-slider-thumb:hover { box-shadow:0 0 0 5px rgba(124,
 
     <!-- Texto -->
     <div class="seccion">
-      <div class="seccion-titulo">Texto</div>
+      <div class="seccion-titulo">Texto <button class="btn-help" onclick="toggleHelp()" title="Referencia TTS-Markdown">?</button></div>
       <textarea id="txt-texto" placeholder="Escribe el texto aquí…" maxlength="800"
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
       <div id="char-count">0 / 800</div>
@@ -328,6 +412,91 @@ input[type="range"]::-webkit-slider-thumb:hover { box-shadow:0 0 0 5px rgba(124,
 
   <!-- Panel derecho -->
   <div id="panel-der">
+
+  <!-- ── Modal ayuda TTS-Markdown ── -->
+  <div id="help-modal">
+    <div class="help-modal-header">
+      <span class="help-modal-title">&#128221; TTS-Markdown</span>
+      <button class="help-modal-close" onclick="toggleHelp()">&#10005;</button>
+    </div>
+    <div class="help-modal-body">
+
+      <div class="hm-section">
+        <div class="hm-section-title">Enfasis</div>
+        <div class="hm-row">
+          <span class="hm-syntax">**texto**</span>
+          <span class="hm-desc">Enfasis mayor &mdash; mas alto y lento</span>
+        </div>
+        <div class="hm-row">
+          <span class="hm-syntax">~~texto~~</span>
+          <span class="hm-desc">Enfasis menor &mdash; mas suave y rapido</span>
+        </div>
+      </div>
+
+      <div class="hm-section">
+        <div class="hm-section-title">Entonacion / Contour</div>
+        <div class="hm-row">
+          <span class="hm-syntax">&gt;&gt;texto&lt;&lt;</span>
+          <span class="hm-desc">Descendente &mdash; afirmacion, baja al final</span>
+        </div>
+        <div class="hm-row">
+          <span class="hm-syntax">&lt;&lt;texto&gt;&gt;</span>
+          <span class="hm-desc">Ascendente &mdash; pregunta, sube al final</span>
+        </div>
+      </div>
+
+      <div class="hm-section">
+        <div class="hm-section-title">Pausas</div>
+        <div class="hm-row">
+          <span class="hm-syntax">---</span>
+          <span class="hm-desc">Pausa corta &mdash; 300 ms</span>
+        </div>
+        <div class="hm-row">
+          <span class="hm-syntax">///</span>
+          <span class="hm-desc">Pausa larga &mdash; 700 ms</span>
+        </div>
+      </div>
+
+      <div class="hm-section">
+        <div class="hm-section-title">Fonema IPA</div>
+        <div class="hm-row">
+          <span class="hm-syntax">((texto|ph))</span>
+          <span class="hm-desc">Pronunciacion fonetica explicita</span>
+        </div>
+        <div class="hm-ipa-grid">
+          <div class="hm-ipa-row"><span class="hm-ipa-sym">&#712;</span><span class="hm-ipa-def">acento primario</span></div>
+          <div class="hm-ipa-row"><span class="hm-ipa-sym">.</span><span class="hm-ipa-def">separador silaba</span></div>
+          <div class="hm-ipa-row"><span class="hm-ipa-sym">&#716;</span><span class="hm-ipa-def">acento secundario</span></div>
+          <div class="hm-ipa-row"><span class="hm-ipa-sym">&#638;</span><span class="hm-ipa-def">r simple (pero)</span></div>
+          <div class="hm-ipa-row"><span class="hm-ipa-sym">r</span><span class="hm-ipa-def">rr vibrante</span></div>
+          <div class="hm-ipa-row"><span class="hm-ipa-sym">x</span><span class="hm-ipa-def">jota (j)</span></div>
+          <div class="hm-ipa-row"><span class="hm-ipa-sym">&#946;</span><span class="hm-ipa-def">b/v suave</span></div>
+          <div class="hm-ipa-row"><span class="hm-ipa-sym">&#240;</span><span class="hm-ipa-def">d suave</span></div>
+        </div>
+      </div>
+
+      <div class="hm-section">
+        <div class="hm-section-title">Ejemplo</div>
+        <div class="hm-example">La <em>**fotosintesis**</em> es el proceso
+por el cual las plantas convierten
+la luz solar en energia. <em>---</em>
+<em>&gt;&gt;</em>Ocurre en las hojas.<em>&lt;&lt;</em> <em>///</em>
+<em>&lt;&lt;</em>&#191;<em>((entendiste|en.ten.&#712;dis.te))</em>?<em>&gt;&gt;</em>
+<em>~~</em>Dato complementario.<em>~~</em></div>
+      </div>
+
+      <div class="hm-section">
+        <div class="hm-section-title">Combinaciones validas</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-soft);line-height:2;">
+          <span style="color:var(--green);">&#10003;</span> &gt;&gt;La <em style="color:var(--accent2);">**celula**</em> es clave.&lt;&lt;<br>
+          <span style="color:var(--green);">&#10003;</span> Frase. <em style="color:var(--accent2);">---</em> &gt;&gt;Otra.&lt;&lt;<br>
+          <span style="color:var(--green);">&#10003;</span> &lt;&lt;&#191;<em style="color:var(--accent2);">((valido|&#712;ba.li.&#240;o))</em>?&gt;&gt;<br>
+          <span style="color:var(--red);">&#10007;</span> <span style="color:var(--text-dim);">**~~no anidar~~**</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
     <!-- Vista: biblioteca -->
     <div id="vista-biblioteca">
@@ -1091,6 +1260,502 @@ function bindEventos() {
   document.getElementById('txt-texto').addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); generar(); }
   });
+}
+
+// ── Modal ayuda ──────────────────────────────────────────────
+function toggleHelp() {
+  document.getElementById('help-modal').classList.toggle('open');
+}
+
+init();
+</script>
+</body>
+</html>tion bindTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabActiva = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('activo', b.dataset.tab === tabActiva));
+      document.getElementById('vista-biblioteca').classList.toggle('oculta', tabActiva === 'lote');
+      document.getElementById('vista-lote').classList.toggle('activa', tabActiva === 'lote');
+    });
+  });
+}
+
+// ─── Archivos ─────────────────────────────────────────────────────
+async function cargarArchivos() {
+  try {
+    const res  = await fetch(`${API}/archivos`);
+    const data = await res.json();
+    renderLista(data);
+    document.getElementById('count-archivos').textContent = data.length;
+  } catch { renderLista([]); }
+}
+
+function renderLista(archivos) {
+  const lista = document.getElementById('lista-audios');
+  const vacio = document.getElementById('lista-vacia');
+  lista.querySelectorAll('.audio-item').forEach(el => el.remove());
+  if (!archivos.length) { vacio.style.display = 'flex'; return; }
+  vacio.style.display = 'none';
+
+  const q = document.getElementById('buscador').value.toLowerCase();
+  archivos.forEach(arch => {
+    const item = document.createElement('div');
+    item.className = 'audio-item' + (q && !arch.nombre.toLowerCase().includes(q) ? ' oculto' : '');
+    item.dataset.nombre = arch.nombre;
+    if (modoAB && abSeleccion.includes(arch.nombre)) item.style.outline = '2px solid var(--accent)';
+
+    const kb = (arch.tamaño / 1024).toFixed(1);
+    item.innerHTML = `
+      <div class="audio-nombre-wrap">
+        <div class="audio-nombre" title="Doble clic para renombrar" data-nombre="${arch.nombre}">${arch.nombre}</div>
+        <div class="audio-meta">${kb} KB · ${arch.fecha}</div>
+      </div>
+      <button class="btn-ico play" title="Reproducir">▶</button>
+      <button class="btn-ico copy" title="Copiar ruta">⎘</button>
+      <button class="btn-ico down" title="Descargar">⬇</button>
+      <button class="btn-ico del"  title="Eliminar">✕</button>
+    `;
+
+    // Renombrar — doble clic en el nombre
+    const nombreEl = item.querySelector('.audio-nombre');
+    nombreEl.addEventListener('dblclick', () => iniciarRenombrado(nombreEl, arch.nombre, item));
+
+    item.querySelector('.play').addEventListener('click', () => {
+      if (modoAB) { seleccionarParaAB(arch.nombre, item); return; }
+      reproducir(arch.nombre, item);
+    });
+    item.querySelector('.copy').addEventListener('click', () => copiarRuta(arch.nombre, arch.ruta));
+    item.querySelector('.down').addEventListener('click', () => descargar(arch.nombre));
+    item.querySelector('.del').addEventListener('click',  () => eliminar(arch.nombre, item));
+
+    lista.insertBefore(item, lista.firstChild);
+  });
+}
+
+// ─── Renombrar ────────────────────────────────────────────────────
+function iniciarRenombrado(el, nombreActual, item) {
+  el.contentEditable = 'true';
+  el.focus();
+  // Seleccionar todo sin la extensión
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+
+  const confirmar = async () => {
+    el.contentEditable = 'false';
+    const nuevo = el.textContent.trim();
+    if (!nuevo || nuevo === nombreActual) { el.textContent = nombreActual; return; }
+    try {
+      const res  = await fetch(`${API}/audio/${encodeURIComponent(nombreActual)}/renombrar`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nuevo }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        item.dataset.nombre = data.nombre;
+        el.textContent = data.nombre;
+        el.dataset.nombre = data.nombre;
+        mostrarToast('Renombrado', 'ok');
+      } else {
+        el.textContent = nombreActual;
+        mostrarToast(data.detail || 'Error al renombrar', 'err');
+      }
+    } catch { el.textContent = nombreActual; }
+  };
+
+  el.addEventListener('blur', confirmar, { once: true });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if (e.key === 'Escape') { el.textContent = nombreActual; el.blur(); }
+  }, { once: true });
+}
+
+// ─── Copiar ruta ──────────────────────────────────────────────────
+async function copiarRuta(nombre, ruta) {
+  try {
+    // Intentar copiar la ruta del disco
+    await navigator.clipboard.writeText(ruta || nombre);
+    mostrarToast('Ruta copiada', 'info');
+  } catch {
+    mostrarToast('No se pudo acceder al portapapeles', 'err');
+  }
+}
+
+// ─── Buscador ─────────────────────────────────────────────────────
+function bindBuscador() {
+  document.getElementById('buscador').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.audio-item').forEach(item => {
+      item.classList.toggle('oculto', !!q && !item.dataset.nombre.toLowerCase().includes(q));
+    });
+  });
+}
+
+// ─── Comparador A/B ───────────────────────────────────────────────
+const audioAB = new Audio();
+
+function bindAB() {
+  document.getElementById('btn-ab').addEventListener('click', () => {
+    modoAB = !modoAB;
+    abSeleccion = [];
+    const btn = document.getElementById('btn-ab');
+    btn.style.color = modoAB ? 'var(--accent2)' : '';
+    btn.style.borderColor = modoAB ? 'var(--accent)' : '';
+    if (!modoAB) {
+      document.getElementById('ab-wrap').classList.remove('visible');
+      document.querySelectorAll('.audio-item').forEach(i => i.style.outline = '');
+    } else {
+      mostrarToast('Selecciona 2 audios para comparar', 'info', 3000);
+      document.getElementById('ab-wrap').classList.add('visible');
+    }
+  });
+
+  document.getElementById('ab-close').addEventListener('click', () => {
+    modoAB = false; abSeleccion = [];
+    document.getElementById('ab-wrap').classList.remove('visible');
+    document.getElementById('btn-ab').style.color = '';
+    document.getElementById('btn-ab').style.borderColor = '';
+    document.querySelectorAll('.audio-item').forEach(i => i.style.outline = '');
+  });
+
+  ['a','b'].forEach(slot => {
+    document.getElementById(`ab-btn-${slot}`).addEventListener('click', () => {
+      const nombre = abSeleccion[slot === 'a' ? 0 : 1];
+      if (!nombre) return;
+      if (!audioAB.paused) audioAB.pause();
+      document.querySelectorAll('.ab-btn').forEach(b => b.classList.remove('jugando'));
+      audioAB.src = `${API}/audio/${encodeURIComponent(nombre)}`;
+      audioAB.play();
+      document.getElementById(`ab-btn-${slot}`).classList.add('jugando');
+    });
+  });
+
+  audioAB.addEventListener('ended', () => {
+    document.querySelectorAll('.ab-btn').forEach(b => b.classList.remove('jugando'));
+  });
+}
+
+function seleccionarParaAB(nombre, item) {
+  const idx = abSeleccion.indexOf(nombre);
+  if (idx >= 0) {
+    abSeleccion.splice(idx, 1);
+    item.style.outline = '';
+  } else {
+    if (abSeleccion.length >= 2) {
+      // Quitar el más viejo
+      const viejo = abSeleccion.shift();
+      document.querySelectorAll('.audio-item').forEach(i => {
+        if (i.dataset.nombre === viejo) i.style.outline = '';
+      });
+    }
+    abSeleccion.push(nombre);
+    item.style.outline = '2px solid var(--accent)';
+  }
+
+  const [a, b] = abSeleccion;
+  document.getElementById('ab-nombre-a').textContent = a ? a.replace('.mp3','').slice(0,20) : '—';
+  document.getElementById('ab-nombre-b').textContent = b ? b.replace('.mp3','').slice(0,20) : '—';
+}
+
+// ─── Audio ────────────────────────────────────────────────────────
+const audioEl   = document.getElementById('audio-el');
+const player    = document.getElementById('player');
+const playerNom = document.getElementById('player-nombre');
+const playerPrg = document.getElementById('player-progress');
+const playerTim = document.getElementById('player-time');
+
+function reproducir(nombre, itemEl) {
+  document.querySelectorAll('.btn-ico.play.playing').forEach(b => { b.textContent='▶'; b.classList.remove('playing'); });
+  if (audioActual === nombre && !audioEl.paused) { audioEl.pause(); audioActual=''; player.classList.remove('visible'); return; }
+  audioActual = nombre;
+  audioEl.src = `${API}/audio/${encodeURIComponent(nombre)}`;
+  audioEl.play();
+  const pb = itemEl?.querySelector('.play');
+  if (pb) { pb.textContent = '⏸'; pb.classList.add('playing'); }
+  playerNom.textContent = nombre;
+  player.classList.add('visible');
+}
+
+audioEl.addEventListener('timeupdate', () => {
+  if (!audioEl.duration) return;
+  playerPrg.value = (audioEl.currentTime / audioEl.duration) * 100;
+  playerTim.textContent = fmtT(audioEl.currentTime);
+});
+audioEl.addEventListener('ended', () => {
+  document.querySelectorAll('.btn-ico.play.playing').forEach(b => { b.textContent='▶'; b.classList.remove('playing'); });
+  playerPrg.value = 0; audioActual = '';
+});
+playerPrg.addEventListener('input', () => {
+  if (audioEl.duration) audioEl.currentTime = (playerPrg.value / 100) * audioEl.duration;
+});
+document.getElementById('btn-player-close').addEventListener('click', () => {
+  audioEl.pause(); player.classList.remove('visible'); audioActual = '';
+  document.querySelectorAll('.btn-ico.play.playing').forEach(b => { b.textContent='▶'; b.classList.remove('playing'); });
+});
+
+function fmtT(s) { return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`; }
+function descargar(nombre) { const a=document.createElement('a'); a.href=`${API}/audio/${encodeURIComponent(nombre)}`; a.download=nombre; a.click(); }
+async function eliminar(nombre, itemEl) {
+  if (!confirm(`¿Eliminar ${nombre}?`)) return;
+  await fetch(`${API}/audio/${encodeURIComponent(nombre)}`, { method:'DELETE' });
+  itemEl.style.opacity='0'; itemEl.style.transition='opacity .2s';
+  setTimeout(() => { itemEl.remove(); cargarArchivos(); }, 200);
+  mostrarToast('Eliminado', 'ok');
+}
+
+// ─── Preview ──────────────────────────────────────────────────────
+const audioPreviewEl = document.getElementById('audio-preview-el');
+
+async function preview() {
+  const texto = document.getElementById('txt-texto').value.trim();
+  if (!texto) { mostrarToast('Escribe algún texto primero', 'err'); return; }
+  const btn = document.getElementById('btn-preview');
+  btn.classList.add('cargando'); btn.textContent = '…';
+  try {
+    const res  = await fetch(`${API}/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto, voz:vozActual(), rate:rateActual(), pitch:pitchActual(), volume:volActual() }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      audioPreviewEl.src = `${API}${data.ruta}?t=${Date.now()}`;
+      audioPreviewEl.play();
+      mostrarToast('Preview listo', 'ok');
+    } else {
+      mostrarToast(data.detail || 'Error en preview', 'err');
+    }
+  } catch { mostrarToast('Error al conectar', 'err'); }
+  finally { btn.classList.remove('cargando'); btn.innerHTML = '👁 Preview'; }
+}
+
+// ─── Generar (con cola) ───────────────────────────────────────────
+function vozActual()   { return document.getElementById('sel-voz').value; }
+function rateActual()  { const v=slVal('sl-rate');  return `${v>=0?'+':''}${v}%`; }
+function pitchActual() { const v=slVal('sl-pitch'); return `${v>=0?'+':''}${v}Hz`; }
+function volActual()   { const v=slVal('sl-vol');   return `${v>=0?'+':''}${v}%`; }
+
+async function generar() {
+  const texto = document.getElementById('txt-texto').value.trim();
+  if (!texto) { mostrarToast('Escribe algún texto primero', 'err'); return; }
+
+  const btn = document.getElementById('btn-generar');
+  const bar = document.getElementById('generando-bar');
+  btn.disabled = true; btn.innerHTML = '<span style="opacity:.6">En cola…</span>';
+  bar.classList.add('visible');
+
+  try {
+    const res  = await fetch(`${API}/generar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        texto, voz: vozActual(), rate: rateActual(),
+        pitch: pitchActual(), volume: volActual(),
+        nombre: document.getElementById('txt-nombre').value.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      document.getElementById('txt-nombre').value = '';
+      registrarTrabajo(data.job_id, texto, data.nombre);
+    } else {
+      mostrarToast(data.detail || 'Error', 'err');
+    }
+  } catch { mostrarToast('Sin conexión al servidor', 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1L11 6.5L2 12V1Z" fill="white"/></svg> Generar';
+    bar.classList.remove('visible');
+  }
+}
+
+// ─── Cola / polling ───────────────────────────────────────────────
+function registrarTrabajo(jid, texto, nombre) {
+  trabajosActivos[jid] = { estado: 'en_cola', texto: texto.slice(0,40), nombre };
+  actualizarBadgeCola();
+  if (!pollingTimer) pollingTimer = setInterval(pollTrabajosActivos, 700);
+}
+
+async function pollTrabajosActivos() {
+  const ids = Object.keys(trabajosActivos);
+  if (!ids.length) { clearInterval(pollingTimer); pollingTimer = null; return; }
+
+  try {
+    const res  = await fetch(`${API}/lote/estado?ids=${ids.join(',')}`);
+    const data = await res.json();
+
+    let huboListo = false;
+    ids.forEach(jid => {
+      const j = data[jid];
+      if (!j) return;
+      trabajosActivos[jid].estado = j.estado;
+      if (j.estado === 'listo' || j.estado === 'error') {
+        if (j.estado === 'listo') {
+          mostrarToast(`✓ ${j.nombre || trabajosActivos[jid].nombre}`, 'ok');
+          huboListo = true;
+        } else {
+          mostrarToast(`Error: ${j.error || 'desconocido'}`, 'err');
+        }
+        delete trabajosActivos[jid];
+      }
+    });
+
+    actualizarBadgeCola();
+    if (huboListo) await cargarArchivos();
+    if (!Object.keys(trabajosActivos).length) { clearInterval(pollingTimer); pollingTimer = null; }
+  } catch { /* servidor ocupado */ }
+}
+
+function actualizarBadgeCola() {
+  const n   = Object.keys(trabajosActivos).length;
+  const bdg = document.getElementById('cola-badge');
+  bdg.textContent = `${n} en cola`;
+  bdg.classList.toggle('visible', n > 0);
+}
+
+// ─── Lote ─────────────────────────────────────────────────────────
+async function generarLote() {
+  const raw = document.getElementById('txt-lote').value.trim();
+  if (!raw) { mostrarToast('Escribe al menos una línea', 'err'); return; }
+
+  const lineas = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const items  = lineas.map(l => {
+    const partes = l.split('|');
+    return partes.length >= 2
+      ? { nombre: partes[0].trim(), texto: partes.slice(1).join('|').trim() }
+      : { texto: l, nombre: '' };
+  }).filter(i => i.texto);
+
+  if (!items.length) { mostrarToast('Sin líneas válidas', 'err'); return; }
+
+  const btn = document.getElementById('btn-lote-generar');
+  btn.disabled = true; btn.innerHTML = 'Enviando…';
+
+  try {
+    const res  = await fetch(`${API}/lote`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items, voz: vozActual(), rate: rateActual(),
+        pitch: pitchActual(), volume: volActual(),
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      // Mostrar progreso
+      const progreso = document.getElementById('lote-progreso');
+      progreso.innerHTML = '';
+      progreso.classList.add('visible');
+      const itemEls = {};
+      data.jobs.forEach(j => {
+        const el = document.createElement('div');
+        el.className = 'lote-item';
+        el.innerHTML = `
+          <span class="lote-item-texto">${j.texto}</span>
+          <span class="lote-item-estado en_cola" data-jid="${j.job_id}">en cola</span>
+        `;
+        progreso.appendChild(el);
+        itemEls[j.job_id] = el.querySelector('.lote-item-estado');
+        trabajosActivos[j.job_id] = { estado: 'en_cola', texto: j.texto, nombre: j.nombre };
+      });
+
+      actualizarBadgeCola();
+      if (!pollingTimer) pollingTimer = setInterval(pollTrabajosActivos, 700);
+
+      // También actualizar el UI del lote con polling local
+      const pollLote = setInterval(async () => {
+        const ids = data.jobs.map(j => j.job_id).join(',');
+        try {
+          const r2 = await fetch(`${API}/lote/estado?ids=${ids}`);
+          const d2 = await r2.json();
+          let todos = true;
+          data.jobs.forEach(j => {
+            const est = d2[j.job_id]?.estado || 'en_cola';
+            const el  = itemEls[j.job_id];
+            if (el) { el.textContent = est; el.className = `lote-item-estado ${est}`; }
+            if (est !== 'listo' && est !== 'error') todos = false;
+          });
+          if (todos) { clearInterval(pollLote); await cargarArchivos(); }
+        } catch {}
+      }, 800);
+
+      mostrarToast(`${data.total} audios en cola`, 'info');
+    } else {
+      mostrarToast(data.detail || 'Error', 'err');
+    }
+  } catch { mostrarToast('Sin conexión', 'err'); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1L11 6.5L2 12V1Z" fill="white"/></svg> Generar lote';
+  }
+}
+
+// Contador de líneas en lote
+function bindLote() {
+  const txt = document.getElementById('txt-lote');
+  const cnt = document.getElementById('lote-count');
+  txt.addEventListener('input', () => {
+    const n = txt.value.split('\n').map(l=>l.trim()).filter(Boolean).length;
+    cnt.textContent = n;
+  });
+  document.getElementById('btn-lote-generar').addEventListener('click', generarLote);
+}
+
+// ─── Toast ────────────────────────────────────────────────────────
+let _tt = null;
+function mostrarToast(msg, tipo='', dur=2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `visible ${tipo}`;
+  clearTimeout(_tt);
+  _tt = setTimeout(() => { el.className = ''; }, dur);
+}
+
+// ─── Modal preset ─────────────────────────────────────────────────
+function bindModalPreset() {
+  document.getElementById('btn-preset-ok').addEventListener('click', guardarPresetCustom);
+  document.getElementById('btn-preset-cancel').addEventListener('click', () =>
+    document.getElementById('modal-preset').classList.remove('visible')
+  );
+  document.getElementById('inp-preset-nombre').addEventListener('keydown', e => {
+    if (e.key === 'Enter') guardarPresetCustom();
+    if (e.key === 'Escape') document.getElementById('modal-preset').classList.remove('visible');
+  });
+  document.getElementById('modal-preset').addEventListener('click', e => {
+    if (e.target.id === 'modal-preset') document.getElementById('modal-preset').classList.remove('visible');
+  });
+}
+
+// ─── Bind general ─────────────────────────────────────────────────
+function bindEventos() {
+  // Char count
+  const txt = document.getElementById('txt-texto');
+  const cnt = document.getElementById('char-count');
+  txt.addEventListener('input', () => {
+    const n = txt.value.length;
+    cnt.textContent = `${n} / 800`;
+    cnt.className = n > 650 ? 'warn' : '';
+  });
+
+  bindSliders();
+  bindTabs();
+  bindBuscador();
+  bindLote();
+  bindAB();
+  bindModalPreset();
+
+  document.getElementById('btn-preview').addEventListener('click', preview);
+  document.getElementById('btn-generar').addEventListener('click', generar);
+  document.getElementById('btn-refresh').addEventListener('click', cargarArchivos);
+
+  document.getElementById('txt-texto').addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); generar(); }
+  });
+}
+
+// ── Modal ayuda ──────────────────────────────────────────────
+function toggleHelp() {
+  document.getElementById('help-modal').classList.toggle('open');
 }
 
 init();

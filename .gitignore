@@ -1,0 +1,4 @@
+output/*
+preview/*
+__pycache__/*
+test-ttsmd.py
